@@ -163,23 +163,38 @@ _print_loc(const char *dotted_loc)
 	g_print("%s\t%"OIO_LOC_FORMAT"\n", dotted_loc, loc);
 }
 
+static void
+_djb_hash_string(const char *str)
+{
+	guint32 hash = djb_hash_buf((guint8*)str, strlen(str));
+	g_print("%s\t%08X\n", str, hash);
+}
+
+static void
+usage(const char *cmd)
+{
+	g_printerr ("Usage:\n");
+	g_printerr ("Print hex representation of the address\n");
+	g_printerr (" %s addr IP:PORT\n", cmd);
+	g_printerr ("Print hex representation of container ID\n");
+	g_printerr (" %s cid  OIOURL\n", cmd);
+	g_printerr ("Generate container names with same hexadecimal prefix\n");
+	g_printerr (" %s hash ACCOUNT [PREFIX]\n", cmd);
+	g_printerr ("Ping a service\n");
+	g_printerr (" %s ping IP:PORT [TIMEOUT]\n", cmd);
+	g_printerr ("Get free CPU, IO and space statistics\n");
+	g_printerr (" %s stat [path]...\n", cmd);
+	g_printerr ("Compute 64b integer location from dotted string\n");
+	g_printerr (" %s location DOTTED_STRING...\n", cmd);
+	g_printerr ("Compute 32b djb hash\n");
+	g_printerr (" %s djb STRING...\n", cmd);
+}
+
 int
 main (int argc, char **argv)
 {
 	if (argc < 2) {
-		g_printerr ("Usage:\n");
-		g_printerr ("Print hex representation of the address\n");
-		g_printerr (" %s addr IP:PORT\n", argv[0]);
-		g_printerr ("Print hex representation of container ID\n");
-		g_printerr (" %s cid  OIOURL\n", argv[0]);
-		g_printerr ("Generate container names with same hexadecimal prefix\n");
-		g_printerr (" %s hash ACCOUNT [PREFIX]\n", argv[0]);
-		g_printerr ("Ping a service\n");
-		g_printerr (" %s ping IP:PORT [TIMEOUT]\n", argv[0]);
-		g_printerr ("Get free CPU, IO and space statistics\n");
-		g_printerr (" %s stat [path]...\n", argv[0]);
-		g_printerr ("Compute 64b integer location from dotted string\n");
-		g_printerr (" %s location DOTTED_STRING...\n", argv[0]);
+		usage(argv[0]);
 		return 2;
 	}
 	oio_ext_set_random_reqid ();
@@ -211,6 +226,12 @@ main (int argc, char **argv)
 		for (int i = 2; i < argc; ++i)
 			_print_loc(argv[i]);
 		return 0;
+	} else if (!strcmp("djb", argv[1])) {
+		for (int i = 2; i < argc; ++i)
+			_djb_hash_string(argv[i]);
+		return 0;
+	} else {
+		usage(argv[0]);
 	}
 
 	return 1;
