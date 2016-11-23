@@ -267,6 +267,11 @@ class SaveObject(ObjectCommandMixin, command.Command):
             metavar='<key_file>',
             help='File containing application keys'
         )
+        parser.add_argument(
+            '--parallel',
+            action='store_true',
+            help='download metachunks in parallel'
+        )
         return parser
 
     def take_action(self, parsed_args):
@@ -285,18 +290,27 @@ class SaveObject(ObjectCommandMixin, command.Command):
             manager = self.app.client_manager.get_flatns_manager()
             container = manager(obj)
 
-        meta, stream = self.app.client_manager.storage.object_fetch(
-            self.app.client_manager.get_account(),
-            container,
-            obj,
-            key_file=key_file
-        )
         if not os.path.exists(os.path.dirname(filename)):
             if len(os.path.dirname(filename)) > 0:
                 os.makedirs(os.path.dirname(filename))
-        with open(filename, 'wb') as ofile:
-            for chunk in stream:
-                ofile.write(chunk)
+        if parsed_args.parallel:
+            self.app.client_manager.storage.object_fetch_to_file(
+                self.app.client_manager.get_account(),
+                container,
+                obj,
+                filename,
+                key_file=key_file
+            )
+        else:
+            with open(filename, 'wb') as ofile:
+                _, stream = self.app.client_manager.storage.object_fetch(
+                    self.app.client_manager.get_account(),
+                    container,
+                    obj,
+                    key_file=key_file
+                )
+                for chunk in stream:
+                    ofile.write(chunk)
 
 
 class ListObject(ContainerCommandMixin, lister.Lister):

@@ -21,7 +21,6 @@ import random
 from urllib import unquote
 from inspect import isgenerator
 
-
 from oio.common import exceptions as exc
 from oio.api import io
 from oio.api.base import API
@@ -44,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 def get_meta_ranges(ranges, chunks):
     range_infos = []
+    # FIXME: not sorted!
     meta_sizes = [c[0]['size'] for _p, c in chunks.iteritems()]
     for obj_start, obj_end in ranges:
         meta_ranges = obj_range_to_meta_chunk_range(obj_start, obj_end,
@@ -180,6 +180,7 @@ class ObjectStorageAPI(API):
             admin_mode=self.admin_mode
         )
         self.namespace = namespace
+        self.pool = utils.ContextPool(32)
 
     def account_create(self, account, headers=None):
         uri = '/v1.0/account/create'
@@ -461,6 +462,51 @@ class ObjectStorageAPI(API):
             stream = self._fetch_stream(meta, chunks, ranges, storage_method,
                                         headers)
         return meta, stream
+
+    def object_fetch_to_file(self, account, container, obj, filename,
+                             headers=None, key_file=None):
+        """Save the whole content of an object into a file"""
+        if not headers:
+            headers = dict()
+        if 'X-oio-req-id' not in headers:
+            headers['X-oio-req-id'] = utils.request_id()
+        meta, raw_chunks = self.object_analyze(
+            account, container, obj, headers=headers)
+        chunk_method = meta['chunk_method']
+        storage_method = STORAGE_METHODS.load(chunk_method)
+        chunks = _sort_chunks(raw_chunks, storage_method.ec)
+        meta['container_id'] = utils.name2cid(account, container).upper()
+        meta['ns'] = self.namespace
+
+        def _fetch_metachunk(metachunk):
+            offset = metachunk[0]['offset']
+            ranges = [(offset, offset + metachunk[0]['size'] - 1)]
+            if storage_method.ec:
+                stream = self._fetch_stream_ec(meta, chunks, ranges,
+                                               storage_method, headers)
+            elif storage_method.backblaze:
+                stream = self._fetch_stream_backblaze(meta, chunks, ranges,
+                                                      storage_method, key_file)
+            else:
+                stream = self._fetch_stream(meta, chunks, ranges,
+                                            storage_method, headers)
+            foffset = offset
+            end = offset + metachunk[0]['size']
+            with open(filename, "wb") as my_file_obj:
+                my_file_obj.seek(foffset)
+                for data in stream:
+                    datalen = len(data)
+                    if foffset > end:
+                        logger.warn("Too much data! %d extra bytes", len(data))
+                        foffset += datalen
+                        continue
+                    my_file_obj.write(data)
+                    foffset += datalen
+            return (offset, foffset)
+
+        res = self.pool.imap(_fetch_metachunk, chunks.itervalues())
+        for start, end in res:
+            logger.info("Downloaded range (%d, %d)", start, end)
 
     @handle_object_not_found
     def object_show(self, account, container, obj, headers=None):

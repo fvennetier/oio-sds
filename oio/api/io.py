@@ -24,7 +24,7 @@ from oio.common.utils import GeneratorReader
 logger = logging.getLogger(__name__)
 
 WRITE_CHUNK_SIZE = 65536
-READ_CHUNK_SIZE = 65536
+READ_CHUNK_SIZE = 262144
 
 # RAWX connection timeout
 CONNECTION_TIMEOUT = 2
