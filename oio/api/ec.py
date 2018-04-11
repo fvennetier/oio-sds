@@ -528,7 +528,7 @@ class EcChunkWriter(object):
         self._conn = conn
         self.failed = False
         self.bytes_transferred = 0
-        self.checksum = hashlib.md5()
+        self.checksum = hashlib.new(io.CHUNK_HASH_ALGO)
         self.write_timeout = write_timeout or io.CHUNK_TIMEOUT
         # we use eventlet Queue to pass data to the send coroutine
         self.queue = Queue(io.PUT_QUEUE_DEPTH)
@@ -641,7 +641,7 @@ class EcMetachunkWriter(io.MetachunkWriter):
         self.sysmeta = sysmeta
         self.meta_chunk = meta_chunk
         self.global_checksum = global_checksum
-        self.checksum = hashlib.md5()
+        self.checksum = hashlib.new(io.CHUNK_HASH_ALGO)
         self.reqid = reqid
         self.connection_timeout = connection_timeout or io.CONNECTION_TIMEOUT
         self.write_timeout = write_timeout or io.CHUNK_TIMEOUT

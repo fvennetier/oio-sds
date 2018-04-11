@@ -16,7 +16,7 @@
 import os
 import tempfile
 import uuid
-from hashlib import md5
+import hashlib
 from tests.functional.cli import CliTestCase, CommandFailed
 from testtools.matchers import Equals
 from tests.utils import random_str
@@ -99,7 +99,7 @@ class ObjTest(CliTestCase):
         self._test_obj('/etc/fstab', test_content, '06EE0', auto='--auto')
 
     def _test_obj(self, obj_file, test_content, cname, auto=''):
-        checksum = md5(test_content).hexdigest().upper()
+        checksum = hashlib.md5(test_content).hexdigest().upper()
         opts = self.get_opts([], 'json')
         output = self.openio('container create ' + cname + opts)
         data = self.json_loads(output)

@@ -28,7 +28,7 @@ from oio.container.client import ContainerClient
 from oio.content.content import ChunksHelper
 from oio.content.factory import ContentFactory
 from oio.content.ec import ECContent
-from tests.functional.content.test_content import md5_stream, random_data, \
+from tests.functional.content.test_content import hash_stream, random_data, \
             md5_data
 from tests.utils import BaseTestCase, random_str
 from urllib import quote_plus
@@ -107,7 +107,7 @@ class TestECContent(BaseTestCase):
             if len(chunks_at_pos) < 1:
                 break
             metachunk_size = chunks_at_pos[0].size
-            metachunk_hash = md5_data(data[offset:offset+metachunk_size])
+            metachunk_hash = hash_stream(data[offset:offset+metachunk_size])
 
             for chunk in chunks_at_pos:
                 meta, stream = self.blob_client.chunk_get(chunk.url)
@@ -118,7 +118,7 @@ class TestECContent(BaseTestCase):
                 self.assertEqual(meta['content_id'], meta['content_id'])
                 self.assertEqual(meta['chunk_id'], chunk.id)
                 self.assertEqual(meta['chunk_pos'], chunk.pos)
-                self.assertEqual(meta['chunk_hash'], md5_stream(stream))
+                self.assertEqual(meta['chunk_hash'], hash_stream(stream))
                 full_path = self._generate_fullpath(self.account,
                                                     self.container_name,
                                                     self.content,
@@ -167,7 +167,7 @@ class TestECContent(BaseTestCase):
             chunk_id_to_rebuild = c.id
             meta, stream = self.blob_client.chunk_get(c.url)
             old_info[pos]["dl_meta"] = meta
-            old_info[pos]["dl_hash"] = md5_stream(stream)
+            old_info[pos]["dl_hash"] = hash_stream(stream)
             # delete the chunk
             self.blob_client.chunk_delete(c.url)
 
@@ -183,14 +183,14 @@ class TestECContent(BaseTestCase):
         for pos in broken_pos_list:
             c = rebuilt_content.chunks.filter(pos=pos)[0]
             rebuilt_meta, rebuilt_stream = self.blob_client.chunk_get(c.url)
-            self.assertEqual(rebuilt_meta["chunk_id"], c.id)
-            self.assertEqual(md5_stream(rebuilt_stream),
-                             old_info[pos]["dl_hash"])
-            self.assertEqual(c.checksum, old_info[pos]["hash"])
-            self.assertNotEqual(c.url, old_info[pos]["url"])
+            self.assertEqual(c.id, rebuilt_meta["chunk_id"])
+            self.assertEqual(old_info[pos]["dl_hash"],
+                             hash_stream(rebuilt_stream))
+            self.assertEqual(old_info[pos]["hash"], c.checksum)
+            self.assertNotEqual(old_info[pos]["url"], c.url)
             del old_info[pos]["dl_meta"]["chunk_id"]
             del rebuilt_meta["chunk_id"]
-            self.assertEqual(rebuilt_meta, old_info[pos]["dl_meta"])
+            self.assertEqual(old_info[pos]["dl_meta"], rebuilt_meta)
 
     def test_content_0_byte_rebuild(self):
         self._test_rebuild(0, self.random_chunks(1))

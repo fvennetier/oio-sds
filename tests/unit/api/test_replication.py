@@ -16,14 +16,14 @@
 import unittest
 from collections import defaultdict
 from io import BytesIO
-from hashlib import md5
+import hashlib
 from eventlet import Timeout
 from oio.common import exceptions as exc
 from oio.common import green
 from oio.api.replication import ReplicatedMetachunkWriter
 from oio.common.storage_method import STORAGE_METHODS
-from tests.unit.api import CHUNK_SIZE, EMPTY_CHECKSUM, empty_stream, \
-    decode_chunked_body, FakeResponse
+from tests.unit.api import CHUNK_SIZE, EMPTY_CHUNK_HASH, \
+    empty_stream, decode_chunked_body, FakeResponse
 from oio.api import io
 from tests.unit import set_http_connect, set_http_requests
 from oio.common.constants import OIO_VERSION
@@ -57,7 +57,7 @@ class TestReplication(unittest.TestCase):
         return self._meta_chunk
 
     def checksum(self, d=''):
-        return md5(d)
+        return hashlib.new(io.CHUNK_HASH_ALGO, d)
 
     def test_write_simple(self):
         checksum = self.checksum()
@@ -72,7 +72,7 @@ class TestReplication(unittest.TestCase):
                 source, size)
             self.assertEqual(len(chunks), len(meta_chunk))
             self.assertEqual(bytes_transferred, 0)
-            self.assertEqual(checksum, EMPTY_CHECKSUM)
+            self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_exception(self):
         checksum = self.checksum()
@@ -109,7 +109,7 @@ class TestReplication(unittest.TestCase):
             #     self.assertEqual(chunks[i].get('error'), 'HTTP 500')
 
             self.assertEqual(bytes_transferred, 0)
-            self.assertEqual(checksum, EMPTY_CHECKSUM)
+            self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_quorum_error(self):
         checksum = self.checksum()
@@ -147,7 +147,7 @@ class TestReplication(unittest.TestCase):
         #     chunks[len(meta_chunk) - 1].get('error'), '1.0 second')
 
         self.assertEqual(bytes_transferred, 0)
-        self.assertEqual(checksum, EMPTY_CHECKSUM)
+        self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_partial_exception(self):
         checksum = self.checksum()
@@ -169,7 +169,7 @@ class TestReplication(unittest.TestCase):
         # self.assertEqual(chunks[len(meta_chunk) - 1].get('error'), 'failure')
 
         self.assertEqual(bytes_transferred, 0)
-        self.assertEqual(checksum, EMPTY_CHECKSUM)
+        self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_error_source(self):
         class TestReader(object):

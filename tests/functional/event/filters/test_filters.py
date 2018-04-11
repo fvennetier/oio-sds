@@ -85,7 +85,8 @@ class TestContentRebuildFilter(BaseTestCase):
         self.blob_rebuilder = subprocess.Popen(
                     ['oio-blob-rebuilder', self.namespace,
                      '--beanstalkd=' + self.queue_url])
-        time.sleep(3)
+        # FIXME(FVE): poll for process termination, in after some time
+        time.sleep(1)
         self.blob_rebuilder.kill()
 
     def _remove_chunks(self, chunks, content_id):
@@ -108,9 +109,8 @@ class TestContentRebuildFilter(BaseTestCase):
         _, after = self.object_storage_api.object_locate(
                         container=self.container, obj=content_name,
                         account=self.account)
-        self.assertIs(chunk_created, self._is_chunks_created(chunks,
-                                                             after,
-                                                             missing_pos))
+        self.assertIs(chunk_created,
+                      self._is_chunks_created(chunks, after, missing_pos))
 
     def test_nothing_missing(self):
         content_name = "test_nothing_missing"

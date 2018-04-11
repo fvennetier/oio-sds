@@ -24,6 +24,7 @@ from testtools.matchers import Contains
 from testtools.matchers import Not
 from testtools.testcase import ExpectedException
 
+from oio.api.io import CHUNK_HASH_ALGO
 from oio.blob.client import BlobClient
 from oio.common.exceptions import NotFound, \
     ContentNotFound, ClientException, OrphanChunk
@@ -36,8 +37,8 @@ from tests.utils import BaseTestCase, ec
 from urllib import quote_plus
 
 
-def md5_stream(stream):
-    checksum = hashlib.md5()
+def hash_stream(stream):
+    checksum = hashlib.new(CHUNK_HASH_ALGO)
     for data in stream:
         checksum.update(data)
     return checksum.hexdigest().upper()
@@ -357,7 +358,7 @@ class TestContentFactory(BaseTestCase):
         chunk_id = content.chunks.filter(metapos=0)[0].id
         chunk_url = content.chunks.filter(metapos=0)[0].url
         chunk_meta, chunk_stream = self.blob_client.chunk_get(chunk_url)
-        chunk_hash = md5_stream(chunk_stream)
+        chunk_hash = hash_stream(chunk_stream)
         new_chunk = content.move_chunk(chunk_id)
 
         content_updated = self.content_factory.get(self.container_id,
@@ -371,7 +372,7 @@ class TestContentFactory(BaseTestCase):
 
         new_chunk_meta, new_chunk_stream = self.blob_client.chunk_get(
             new_chunk["url"])
-        new_chunk_hash = md5_stream(new_chunk_stream)
+        new_chunk_hash = hash_stream(new_chunk_stream)
 
         self.assertEqual(new_chunk_hash, chunk_hash)
 

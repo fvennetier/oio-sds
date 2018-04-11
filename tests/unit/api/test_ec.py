@@ -17,16 +17,17 @@ import unittest
 import random
 from io import BytesIO
 from collections import defaultdict
-from hashlib import md5
+import hashlib
 from copy import deepcopy
 from eventlet import Timeout
 from oio.common.storage_method import STORAGE_METHODS
 from oio.api.ec import EcMetachunkWriter, ECChunkDownloadHandler, \
     ECRebuildHandler
+from oio.api.io import CHUNK_HASH_ALGO
 from oio.common import exceptions as exc, green
 from oio.common.constants import chunk_headers
 from tests.unit.api import empty_stream, decode_chunked_body, \
-    FakeResponse, CHUNK_SIZE, EMPTY_CHECKSUM
+    FakeResponse, CHUNK_SIZE, EMPTY_CHUNK_HASH
 from tests.unit import set_http_connect, set_http_requests
 from oio.common.constants import OIO_VERSION
 
@@ -66,7 +67,10 @@ class TestEC(unittest.TestCase):
         return deepcopy(self._meta_chunk)
 
     def checksum(self, d=''):
-        return md5(d)
+        return hashlib.new(CHUNK_HASH_ALGO, d)
+
+    def checksum_chunk(self, d=''):
+        return hashlib.new(CHUNK_HASH_ALGO, d)
 
     def test_write_simple(self):
         checksum = self.checksum()
@@ -80,7 +84,7 @@ class TestEC(unittest.TestCase):
             bytes_transferred, checksum, chunks = handler.stream(source, size)
         self.assertEqual(len(chunks), nb)
         self.assertEqual(bytes_transferred, 0)
-        self.assertEqual(checksum, EMPTY_CHECKSUM)
+        self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_exception(self):
         checksum = self.checksum()
@@ -113,7 +117,7 @@ class TestEC(unittest.TestCase):
             self.assertEqual(chunks[i].get('error'), 'resp: HTTP 500')
 
         self.assertEqual(bytes_transferred, 0)
-        self.assertEqual(checksum, EMPTY_CHECKSUM)
+        self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_quorum_error(self):
         checksum = self.checksum()
@@ -158,7 +162,7 @@ class TestEC(unittest.TestCase):
             self.assertEqual(chunks[nb - 1].get('error'), test['msg'])
 
             self.assertEqual(bytes_transferred, 0)
-            self.assertEqual(checksum, EMPTY_CHECKSUM)
+            self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_response_error(self):
         test_cases = [
@@ -187,7 +191,7 @@ class TestEC(unittest.TestCase):
             self.assertEqual(chunks[nb - 1].get('error'), test['msg'])
 
             self.assertEqual(bytes_transferred, 0)
-            self.assertEqual(checksum, EMPTY_CHECKSUM)
+            self.assertEqual(checksum, EMPTY_CHUNK_HASH)
 
     def test_write_error_source(self):
         class TestReader(object):

@@ -811,10 +811,13 @@ retry:
 	/* Trigger the checksum on the chunk */
 	ds->md5 = NULL;
 	if (conf->checksum_mode == CHECKSUM_ALWAYS) {
-		ds->md5 = g_checksum_new (G_CHECKSUM_MD5);
+		// ds->md5 = g_checksum_new (G_CHECKSUM_MD5);
+		ds->md5 = g_checksum_new(G_CHECKSUM_SHA256);
 	} else if (conf->checksum_mode == CHECKSUM_SMART) {
-	   if (!oio_str_prefixed(ctx->chunk.content_chunk_method, STGPOL_DSPREFIX_EC, "/"))
-		   ds->md5 = g_checksum_new (G_CHECKSUM_MD5);
+	   if (!oio_str_prefixed(ctx->chunk.content_chunk_method, STGPOL_DSPREFIX_EC, "/")) {
+		   // ds->md5 = g_checksum_new (G_CHECKSUM_MD5);
+		   ds->md5 = g_checksum_new(G_CHECKSUM_SHA256);
+	   }
 	}
 
 	*result = ds;

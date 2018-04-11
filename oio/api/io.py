@@ -39,6 +39,8 @@ CLIENT_TIMEOUT = 60.0
 
 PUT_QUEUE_DEPTH = 10
 
+CHUNK_HASH_ALGO = 'sha256'
+
 
 def close_source(source):
     try:

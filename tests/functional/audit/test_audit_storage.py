@@ -17,6 +17,7 @@ import hashlib
 
 import os
 
+from oio.api.io import CHUNK_HASH_ALGO
 from oio.common.utils import get_logger, cid_from_name, xattr
 from oio.blob.auditor import BlobAuditorWorker
 from oio.common import exceptions as exc
@@ -36,11 +37,11 @@ class TestContent(object):
 
 
 class TestChunk(object):
-    def __init__(self, size, id_r, pos, md5):
+    def __init__(self, size, id_r, pos, hash_):
         self.size = size
         self.id_chunk = id_r
         self.pos = pos
-        self.md5 = md5
+        self.hash = hash_
 
 
 class TestBlobAuditorFunctional(BaseTestCase):
@@ -55,6 +56,7 @@ class TestBlobAuditorFunctional(BaseTestCase):
         self.rawx = 'http://' + rawx_addr
 
         self.h = hashlib.new('md5')
+        self.ch = hashlib.new(CHUNK_HASH_ALGO)
 
         conf = {"namespace": self.namespace}
         self.auditor = BlobAuditorWorker(conf, get_logger(None), None)
@@ -80,7 +82,7 @@ class TestBlobAuditorFunctional(BaseTestCase):
                                self.hash_rand)
 
         self.chunk_url = "%s/%s" % (self.rawx, self.chunk.id_chunk)
-        self.chunk_proxy = {"hash": self.chunk.md5, "pos": "0",
+        self.chunk_proxy = {"hash": self.chunk.hash, "pos": "0",
                             "size": self.chunk.size,
                             "url":  self.chunk_url}
 
@@ -92,7 +94,7 @@ class TestBlobAuditorFunctional(BaseTestCase):
                       'version': 1,
                       'chunk_id': self.chunk.id_chunk,
                       'chunk_pos': self.chunk.pos,
-                      'chunk_hash': self.chunk.md5,
+                      'chunk_hash': self.chunk.hash,
                       'full_path': ['%s/%s/%s' % (self.account, self.ref,
                                                   self.content.path)],
                       'oio_version': OIO_VERSION
@@ -210,10 +212,10 @@ class TestBlobAuditorFunctional(BaseTestCase):
                           self.chunk_path)
 
     def test_chunk_bad_hash(self):
-        self.h.update(self.data)
-        self.hash_rand = self.h.hexdigest().lower()
-        self.chunk.md5 = self.hash_rand
-        self.chunk_proxy['hash'] = self.chunk.md5
+        self.ch.update(self.data)
+        self.hash_rand = self.ch.hexdigest().lower()
+        self.chunk.hash = self.hash_rand
+        self.chunk_proxy['hash'] = self.chunk.hash
         self.init_content()
 
         self.assertRaises(exc.FaultyChunk, self.auditor.chunk_audit,

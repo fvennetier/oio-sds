@@ -19,9 +19,10 @@ import string
 import random
 import os
 import os.path
-from hashlib import md5
+import hashlib
 from urlparse import urlparse
 from urllib import quote_plus
+from oio.api.io import CHUNK_HASH_ALGO
 from oio.common.http import http_connect
 from oio.common.constants import OIO_VERSION
 
@@ -54,7 +55,8 @@ class TestBlobFunctional(BaseTestCase):
             'x-oio-chunk-meta-container-id': '1'*64,
             'x-oio-chunk-meta-chunk-id': name,
             'x-oio-chunk-meta-chunk-size': len(data),
-            'x-oio-chunk-meta-chunk-hash': md5(data).hexdigest().upper(),
+            'x-oio-chunk-meta-chunk-hash':
+                hashlib.new(CHUNK_HASH_ALGO, data).hexdigest().upper(),
             'x-oio-chunk-meta-chunk-pos': 0,
             'x-oio-chunk-meta-full-path': ('test/test/test' +
                                            ',test1/test1/test1'),
@@ -117,7 +119,7 @@ class TestBlobFunctional(BaseTestCase):
         headers = self._chunk_attr(chunkid, chunkdata)
         metachunk_size = 9 * length
         # TODO take random legit value
-        metachunk_hash = md5().hexdigest()
+        metachunk_hash = hashlib.new(CHUNK_HASH_ALGO).hexdigest()
         # TODO should also include meta-chunk-hash
         trailers = {'x-oio-chunk-meta-metachunk-size': metachunk_size,
                     'x-oio-chunk-meta-metachunk-hash': metachunk_hash}
@@ -162,7 +164,7 @@ class TestBlobFunctional(BaseTestCase):
         # we do not really care about the actual value
         metachunk_size = 9 * length
         # TODO take random legit value
-        metachunk_hash = md5().hexdigest()
+        metachunk_hash = hashlib.new(CHUNK_HASH_ALGO).hexdigest()
         # TODO should also include meta-chunk-hash
         trailers = {'x-oio-chunk-meta-metachunk-size': metachunk_size,
                     'x-oio-chunk-meta-metachunk-hash': metachunk_hash}
@@ -327,7 +329,7 @@ class TestBlobFunctional(BaseTestCase):
         chunkurl = self._rawx_url(chunkid)
         # chunkpath = self._chunk_path(chunkid)
         headers = self._chunk_attr(chunkid, chunkdata)
-        metachunk_hash = md5().hexdigest()
+        metachunk_hash = hashlib.new(CHUNK_HASH_ALGO).hexdigest()
         trailers = {'x-oio-chunk-meta-metachunk-size': 1,
                     'x-oio-chunk-meta-metachunk-hash': metachunk_hash}
 

@@ -50,7 +50,7 @@ class ReplicatedMetachunkWriter(io.MetachunkWriter):
             storage_method=storage_method, quorum=quorum)
         self.sysmeta = sysmeta
         self.meta_chunk = meta_chunk
-        self.checksum = checksum
+        self.global_checksum = checksum
         self.connection_timeout = connection_timeout or io.CONNECTION_TIMEOUT
         self.write_timeout = write_timeout or io.CHUNK_TIMEOUT
         self.read_timeout = read_timeout or io.CLIENT_TIMEOUT
@@ -59,7 +59,7 @@ class ReplicatedMetachunkWriter(io.MetachunkWriter):
     def stream(self, source, size=None):
         bytes_transferred = 0
         meta_chunk = self.meta_chunk
-        meta_checksum = hashlib.md5()
+        meta_checksum = hashlib.new(io.CHUNK_HASH_ALGO)
         pile = GreenPile(len(meta_chunk))
         failed_chunks = []
         current_conns = []
@@ -102,7 +102,7 @@ class ReplicatedMetachunkWriter(io.MetachunkWriter):
                                 if not conn.failed:
                                     conn.queue.put('0\r\n\r\n')
                             break
-                    self.checksum.update(data)
+                    self.global_checksum.update(data)
                     meta_checksum.update(data)
                     bytes_transferred += len(data)
                     # copy current_conns to be able to remove a failed conn

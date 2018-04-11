@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from hashlib import md5
+import hashlib
 
 from werkzeug.exceptions import BadRequest
 from werkzeug.routing import Map, Rule
@@ -25,7 +25,7 @@ from oio.api.replication import ReplicatedMetachunkWriter
 from oio.api.backblaze import BackblazeChunkWriteHandler, \
     BackblazeChunkDownloadHandler
 from oio.api.backblaze_http import BackblazeUtils, BackblazeUtilsException
-from oio.api.io import ChunkReader
+from oio.api.io import ChunkReader, CHUNK_HASH_ALGO
 from oio.common.exceptions import OioException
 from oio.common.wsgi import WerkzeugApp
 
@@ -120,7 +120,7 @@ class ECD(WerkzeugApp):
 
     def write_ec_meta_chunk(self, source, size, storage_method, sysmeta,
                             meta_chunk):
-        meta_checksum = md5()
+        meta_checksum = hashlib.new(CHUNK_HASH_ALGO)
         handler = EcMetachunkWriter(sysmeta, meta_chunk, meta_checksum,
                                     storage_method)
         bytes_transferred, checksum, chunks = handler.stream(source, size)
@@ -128,7 +128,7 @@ class ECD(WerkzeugApp):
 
     def write_backblaze_meta_chunk(self, source, size, storage_method, sysmeta,
                                    meta_chunk):
-        meta_checksum = md5()
+        meta_checksum = hashlib.new(CHUNK_HASH_ALGO)
         upload_chunk = meta_chunk[0]
         key_file = self.conf.get('key_file')
         try:
@@ -146,7 +146,7 @@ class ECD(WerkzeugApp):
 
     def write_repli_meta_chunk(self, source, size, storage_method, sysmeta,
                                meta_chunk):
-        meta_checksum = md5()
+        meta_checksum = hashlib.new(CHUNK_HASH_ALGO)
         handler = ReplicatedMetachunkWriter(
                 sysmeta, meta_chunk, meta_checksum,
                 storage_method=storage_method)

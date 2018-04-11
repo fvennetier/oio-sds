@@ -13,14 +13,17 @@
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library.
 
+import hashlib
 from io import BytesIO
 from eventlet import sleep
 from oio.common.http import HeadersDict, urllib3
+from oio.api.io import CHUNK_HASH_ALGO
 from oio.api.object_storage import ObjectStorageApi
 from oio.directory.client import DirectoryClient
 
 CHUNK_SIZE = 1048576
-EMPTY_CHECKSUM = 'd41d8cd98f00b204e9800998ecf8427e'
+EMPTY_MD5 = 'd41d8cd98f00b204e9800998ecf8427e'
+EMPTY_CHUNK_HASH = hashlib.new(CHUNK_HASH_ALGO, '').hexdigest()
 
 
 class FakeAPI(object):
