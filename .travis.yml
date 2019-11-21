@@ -72,34 +72,34 @@ jobs:
       name: Copyright, Release build, SDK build
     - script: ./tools/oio-travis-unit.sh
       name: C unit/func, Python unit/pep8
-    - stage: Functional tests (fast)
-      script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=slave
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=cli
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=worm
-    - stage: Functional tests
-      script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=rebuilder,with-service-id
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=single,webhook
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=repli
+      #    - stage: Functional tests (fast)
+      #      script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=slave
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=cli
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=worm
+      #    - stage: Functional tests
+      #      script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=rebuilder,with-service-id
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=single,webhook
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=repli
     - script: ./tools/oio-travis-suites.sh
       env: TEST_SUITE=ec
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=3copies
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=small-cache,fsync
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=3copies,with-service-id
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=3copies
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=small-cache,fsync
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=3copies,with-service-id
     - script: ./tools/oio-travis-suites.sh
       env: TEST_SUITE=ec,with-random-service-id
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=multi-beanstalk
-    - script: ./tools/oio-travis-suites.sh
-      env: TEST_SUITE=mover,with-service-id
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=multi-beanstalk
+      #    - script: ./tools/oio-travis-suites.sh
+      #      env: TEST_SUITE=mover,with-service-id
 
 after_success:
   - bash <(curl -s https://codecov.io/bash) -f /tmp/cmake_coverage.output
