@@ -616,6 +616,10 @@ _reply_simplified_beans_ext(struct req_args_s *args, GError *err,
 				return _reply_notfound_error(args,
 						NEWERROR(CODE_CONTENT_DELETED, "Alias deleted"));
 			}
+			if (!oio_url_has(args->url, OIOURL_PATH)) {
+				oio_url_set(args->url, OIOURL_PATH,
+						ALIASES_get_alias(alias)->str);
+			}
 		}
 		else if (&descr_struct_CONTENTS_HEADERS == DESCR(l0->data)) {
 			header = l0->data;
@@ -2409,7 +2413,7 @@ _get_spare_chunks(struct oio_url_s *url, const gchar *position,
 
 static GError*
 _generate_beans(struct oio_url_s *url, gint64 pos,  gint64 size,
-		const char *polname, GSList **beans)
+		const char *polname, gboolean random_ids, GSList **beans)
 {
 	struct namespace_info_s ni = {};
 	NSINFO_READ(namespace_info_copy(&nsinfo, &ni));
@@ -2419,10 +2423,18 @@ _generate_beans(struct oio_url_s *url, gint64 pos,  gint64 size,
 	if (!policy)
 		return NEWERROR(CODE_POLICY_NOT_SUPPORTED, "Unexpected storage policy");
 
-	GError *err = oio_generate_focused_beans(
-			url, pos, size, oio_ns_chunk_size, policy, lb_rawx,
-			location_num, oio_proxy_local_prepare,
-			beans);
+	struct oio_generate_beans_params_s params = {
+		.lb=lb_rawx,
+		.url=url,
+		.pos=pos,
+		.size=size,
+		.chunk_size=oio_ns_chunk_size,
+		.pol=policy,
+		.pin=location_num,
+		.mode=oio_proxy_local_prepare,
+		.random_ids=random_ids
+	};
+	GError *err = oio_generate_focused_beans(&params, beans);
 
 	storage_policy_clean(policy);
 	return err;
@@ -2432,10 +2444,12 @@ static enum http_rc_e
 _action_m2_content_prepare(struct req_args_s *args, struct json_object *jargs,
 		enum http_rc_e (*_reply_beans_func)(struct req_args_s *, GError *, GSList *))
 {
-	struct json_object *jsize = NULL, *jpol = NULL, *jpos = NULL;
+	struct json_object *jsize = NULL, *jpol = NULL, *jpos = NULL,
+			*jappend = NULL;
 	json_object_object_get_ex(jargs, "size", &jsize);
 	json_object_object_get_ex(jargs, "policy", &jpol);
 	json_object_object_get_ex(jargs, "position", &jpos);
+	json_object_object_get_ex(jargs, "append", &jappend);
 
 	const gchar *strsize = !jsize ? NULL : json_object_get_string (jsize);
 	const gchar *stgpol = !jpol ? oio_ns_storage_policy : json_object_get_string (jpol);
@@ -2456,9 +2470,15 @@ _action_m2_content_prepare(struct req_args_s *args, struct json_object *jargs,
 		return _reply_format_error(args,
 				BADREQ("Invalid position format (integer expected)"));
 
+	/* If we are preparing chunks in order to append data to an existing
+	 * object, we must generate random IDs, because the final position
+	 * of the chunks is not known yet. */
+	gboolean random_ids = json_object_get_boolean(jappend);
+
 	/* Local generation of beans */
 	GSList *beans = NULL;
-	GError *err = _generate_beans(args->url, pos, size, stgpol, &beans);
+	GError *err = _generate_beans(args->url, pos, size, stgpol, random_ids,
+			&beans);
 
 	/* Patch the chunk size to ease putting contents with unknown size. */
 	if (!err) {
@@ -2977,7 +2997,9 @@ enum http_rc_e action_content_prepare (struct req_args_s *args) {
 //
 //    {
 //      "size": 42,
-//      "policy": "SINGLE"
+//      "policy": "SINGLE",
+//      "position": 0,
+//      "append": false
 //    }
 //
 //
@@ -3058,7 +3080,7 @@ enum http_rc_e action_content_show (struct req_args_s *args) {
 // POST /v3.0/{NS}/content/delete?acct={account}&ref={container}&path={file path}
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// If the versioning is enabled, you can add delete marker to a specific version
+// If the versioning is enabled, you can create a delete marker over a specific version
 //
 // .. code-block:: text
 //
@@ -3093,21 +3115,23 @@ enum http_rc_e action_content_show (struct req_args_s *args) {
 //
 // }}CONTENT
 enum http_rc_e action_content_delete (struct req_args_s *args) {
-	const gboolean delete_marker = _request_get_flag(args, "delete_marker");
+	const gboolean create_delete_marker =
+			_request_get_flag(args, "delete_marker");
 	/* used from oio-swift for "sharding" in containers */
 	const char* force_versioning = g_tree_lookup(args->rq->tree_headers,
 			PROXYD_HEADER_FORCE_VERSIONING);
 	oio_ext_set_force_versioning(force_versioning);
 
 	PACKER_VOID(_pack) { return m2v2_remote_pack_DEL (args->url,
-			delete_marker, DL()); }
+			create_delete_marker, DL()); }
 	GError *err = _resolve_meta2(args, _prefer_master(), _pack, NULL, NULL);
 	return _reply_m2_error (args, err);
 }
 
 static enum http_rc_e
 _m2_content_delete_many (struct req_args_s *args, struct json_object * jbody) {
-	const gboolean delete_marker = _request_get_flag(args, "delete_marker");
+	const gboolean create_delete_marker =
+			_request_get_flag(args, "delete_marker");
 	/* used from oio-swift for "sharding" in containers */
 	const char* force_versioning = g_tree_lookup(args->rq->tree_headers,
 			PROXYD_HEADER_FORCE_VERSIONING);
@@ -3115,7 +3139,7 @@ _m2_content_delete_many (struct req_args_s *args, struct json_object * jbody) {
 
 	json_object *jarray = NULL;
 	PACKER_VOID(_pack) { return m2v2_remote_pack_DEL (args->url,
-			delete_marker, DL()); }
+			create_delete_marker, DL()); }
 
 	if (!oio_url_has_fq_container(args->url))
 		return _reply_format_error(args,

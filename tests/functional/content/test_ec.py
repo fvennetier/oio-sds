@@ -184,7 +184,9 @@ class TestECContent(BaseTestCase):
             self.assertEqual(c.checksum, old_info[pos]["hash"])
             self.assertNotEqual(c.url, old_info[pos]["url"])
             del old_info[pos]["dl_meta"]["chunk_id"]
+            del old_info[pos]["dl_meta"]["chunk_mtime"]
             del rebuilt_meta["chunk_id"]
+            del rebuilt_meta["chunk_mtime"]
             self.assertEqual(rebuilt_meta, old_info[pos]["dl_meta"])
 
     def test_content_0_byte_rebuild(self):

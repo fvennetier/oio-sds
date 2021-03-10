@@ -92,6 +92,13 @@ void m2v2_sorted_content_extend_chunk_urls(struct m2v2_sorted_content_s *content
 /* Free a sorted content (the beans must be freed separately). */
 void m2v2_sorted_content_free(struct m2v2_sorted_content_s *content);
 
+/* Remove protocol and path from the chunk's URL, keen only the service ID. */
+void m2v2_shorten_chunk_id(struct bean_CHUNKS_s *bean);
+
+/* Remove the protocol and path from chunk URLs, keen only service IDs.
+ * If meta2.store_chunk_ids is false, do nothing. */
+void m2v2_shorten_chunk_ids(GSList *beans);
+
 typedef void (*m2_onbean_cb) (gpointer u, gpointer bean);
 
 /** Get the cumulated size and number of contents in the database. */
@@ -194,7 +201,7 @@ GError* m2db_drain_content(struct sqlx_sqlite3_s *sq3, struct oio_url_s *url,
 		m2_onbean_cb cb, gpointer u0);
 
 GError* m2db_delete_alias(struct sqlx_sqlite3_s *sq3, gint64 max_versions,
-		gboolean delete_marker, struct oio_url_s *url,
+		gboolean create_delete_marker, struct oio_url_s *url,
 		m2_onbean_cb cb, gpointer u0);
 
 void checked_content_free(struct checked_content_s *checked_content);
@@ -232,6 +239,7 @@ struct m2db_put_args_s
 	gint64 ns_max_versions;
 	// Should be true when in WORM mode and no admin flag
 	gboolean worm_mode;
+	gboolean preserve_chunk_ids;
 };
 
 GError* m2db_put_alias(struct m2db_put_args_s *args, GSList *beans,
@@ -287,7 +295,7 @@ GError* m2db_flush_container(struct sqlx_sqlite3_s *sq3, m2_onbean_cb cb,
 /** Generate a chunk "bean", filled with only an address and ctime. */
 struct bean_CHUNKS_s *generate_chunk_bean(struct oio_url_s *url,
 		const gchar *pos, struct oio_lb_selected_item_s *sel,
-		const struct storage_policy_s *policy);
+		const struct storage_policy_s *policy, gboolean force_random_ids);
 
 /** Generate a property "bean", with details about the quality of a chunk. */
 struct bean_PROPERTIES_s *generate_chunk_quality_bean(
